@@ -1,0 +1,1 @@
+ALTER TABLE verification_submissions ADD COLUMN IF NOT EXISTS image_reviews jsonb DEFAULT '[]'::jsonb;

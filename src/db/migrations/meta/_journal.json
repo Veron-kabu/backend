@@ -1,0 +1,83 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1758315685564,
+      "tag": "0000_real_kate_bishop",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1758315686564,
+      "tag": "0001_add_geocell",
+      "breakpoints": false
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1758315687564,
+      "tag": "0001_add_order_status_history",
+      "breakpoints": false
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1758315688564,
+      "tag": "0001_cleanup_placeholder_media",
+      "breakpoints": false
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1758315689564,
+      "tag": "0001_lock_roles",
+      "breakpoints": false
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1758315690564,
+      "tag": "0002_add_banner_image",
+      "breakpoints": false
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1758315691564,
+      "tag": "0003_add_blurhash_columns",
+      "breakpoints": false
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1758315692564,
+      "tag": "0004_add_discount_percent",
+      "breakpoints": false
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1758315693564,
+      "tag": "0005_add_thumbnails",
+      "breakpoints": false
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1758315694564,
+      "tag": "0006_add_clerk_sync_runs",
+      "breakpoints": false
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1760662565279,
+      "tag": "0010_salty_groot",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "sync:clerk:users": "node ./scripts/sync-clerk-users.mjs",
+    "migrate:geocell": "node ./scripts/apply-geocell-migration.mjs",
+    "blurhash:backfill": "node ./scripts/backfill-blurhashes.mjs",
+    "fix:users:columns": "node ./scripts/apply-fix-users-columns.mjs",
+    "migrate:verification:cleanup": "node ./scripts/apply-verification-cleanup.mjs",
+    "migrate:verification:drop-image-reviews": "node ./scripts/apply-image-reviews-drop.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.676.0",
+    "@aws-sdk/s3-request-presigner": "^3.676.0",
+    "@clerk/backend": "^0.38.4",
+    "@clerk/express": "^0.0.8",
+    "@neondatabase/serverless": "^1.0.0",
+    "blurhash": "^2.0.5",
+    "cors": "^2.8.5",
+    "cron": "^4.3.0",
+    "dotenv": "^16.5.0",
+    "drizzle-orm": "^0.44.2",
+    "express": "^5.1.0",
+    "nodemailer": "^6.9.14",
+    "sharp": "^0.33.4",
+    "svix": "^1.76.1"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.1",
+    "nodemon": "^3.1.10"
+  }
+}
