@@ -151,8 +151,15 @@ router.get('/uploads/resolve-avatar-url', ensureAuth(), async (req,res) => {
 })
 
 // Batch resolver: resolve many media URLs in one request. Accepts body { urls: string[], force?: boolean }
-router.post('/uploads/resolve-urls', ensureAuth(), async (req, res) => {
+// Public batch resolver: resolve many media URLs in one request. Signed URLs are short-lived.
+// Rate-limited by IP to prevent abuse. This enables images for signed-out flows (e.g., home, search).
+router.post('/uploads/resolve-urls', async (req, res) => {
   try {
+    // Simple IP-based rate limit: 60 tokens burst, 1 token/sec refill
+    const rlKey = `resolve_urls_${req.ip}`
+    if (!takeToken(rlKey, { capacity: 60, refillRatePerSec: 1 })) {
+      return res.status(429).json({ error: 'Too many requests' })
+    }
     const urls = Array.isArray(req.body?.urls) ? req.body.urls.filter(u => typeof u === 'string' && u.trim().length) : []
     const force = req.body?.force === true || req.body?.force === '1' || req.body?.force === 'true'
     if (urls.length === 0) return res.status(400).json({ error: 'urls (array) required' })
