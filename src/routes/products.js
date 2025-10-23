@@ -4,7 +4,7 @@ import { productsTable, usersTable, ordersTable, favoritesTable } from '../db/sc
 import { ensureAuth } from '../middleware/auth.js'
 import { requireRole } from '../middleware/role.js'
 import { requireNotSuspended } from '../middleware/status.js'
-import { and, eq, gt, gte, lte, lt, inArray } from 'drizzle-orm'
+import { and, eq, gt, gte, lte, lt, inArray, ilike, desc } from 'drizzle-orm'
 import { computeBlurhashFromUrl } from '../utils/blurhash.js'
 import { takeToken } from '../utils/rateLimit.js'
 import { userVerificationTable } from '../db/schema.js'
@@ -18,13 +18,18 @@ const ALLOWED_CATEGORIES = new Set([
 
 router.get('/products', async (req,res) => {
   try {
-    const { category, min_price, max_price, is_organic, limit, cursor } = req.query
-    const pageSize = Math.min(Number(limit) || 0, 100) || null
+    const { category, min_price, max_price, is_organic, limit, cursor, search } = req.query
+    // Default to paginated response with a sane default size
+    const pageSize = Math.min(Number(limit) || 24, 100)
     let whereExpr = and(eq(productsTable.status, 'active'), gt(productsTable.quantityAvailable, 0))
     if (category) whereExpr = and(whereExpr, eq(productsTable.category, category))
     if (min_price) whereExpr = and(whereExpr, gte(productsTable.price, min_price))
     if (max_price) whereExpr = and(whereExpr, lte(productsTable.price, max_price))
     if (is_organic === 'true') whereExpr = and(whereExpr, eq(productsTable.isOrganic, true))
+    if (search && String(search).trim().length > 0) {
+      const q = `%${String(search).trim()}%`
+      whereExpr = and(whereExpr, ilike(productsTable.title, q))
+    }
     if (cursor) {
       // cursor is ISO date string of createdAt
       const d = new Date(cursor)
@@ -43,23 +48,13 @@ router.get('/products', async (req,res) => {
     .from(productsTable)
     .leftJoin(usersTable, eq(productsTable.farmerId, usersTable.id))
     .where(whereExpr)
-    .orderBy(productsTable.createdAt)
+    .orderBy(desc(productsTable.createdAt))
+    .limit(pageSize + 1)
     
     let rows = await query
-    // order newest first
-    rows = rows.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt))
-    let sliced = rows
-    let nextCursor = null
-    if (pageSize) {
-      sliced = rows.slice(0, pageSize)
-      if (rows.length > pageSize) {
-        nextCursor = rows[pageSize - 1].createdAt
-      }
-    }
-    if (pageSize) {
-      return res.json({ items: sliced, nextCursor })
-    }
-    return res.json(sliced)
+    const sliced = rows.slice(0, pageSize)
+    const nextCursor = rows.length > pageSize ? rows[pageSize - 1].createdAt : null
+    return res.json({ items: sliced, nextCursor })
   } catch (e) {
     console.error('Error fetching products:', e)
     res.status(500).json({ error: 'Failed to fetch products' })

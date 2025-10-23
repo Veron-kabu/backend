@@ -150,6 +150,55 @@ router.get('/uploads/resolve-avatar-url', ensureAuth(), async (req,res) => {
   } catch (e) { console.error('resolve-avatar-url error:', e); res.status(500).json({ error: 'Failed to resolve avatar url' }) }
 })
 
+// Batch resolver: resolve many media URLs in one request. Accepts body { urls: string[], force?: boolean }
+router.post('/uploads/resolve-urls', ensureAuth(), async (req, res) => {
+  try {
+    const urls = Array.isArray(req.body?.urls) ? req.body.urls.filter(u => typeof u === 'string' && u.trim().length) : []
+    const force = req.body?.force === true || req.body?.force === '1' || req.body?.force === 'true'
+    if (urls.length === 0) return res.status(400).json({ error: 'urls (array) required' })
+    const { AWS_S3_BUCKET, AWS_S3_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_PUBLIC_READ, AWS_CLOUDFRONT_DOMAIN } = ENV
+
+    const s3 = (AWS_S3_BUCKET && AWS_S3_REGION && AWS_ACCESS_KEY_ID && AWS_SECRET_ACCESS_KEY)
+      ? new S3Client({ region: AWS_S3_REGION, credentials: { accessKeyId: AWS_ACCESS_KEY_ID, secretAccessKey: AWS_SECRET_ACCESS_KEY } })
+      : null
+
+    const results = await Promise.all(urls.map(async (url) => {
+      try {
+        const isS3Like = (() => {
+          try {
+            const u = new URL(url)
+            const host = u.host
+            const cfValid = AWS_CLOUDFRONT_DOMAIN && !/your-cloudfront-domain/i.test(AWS_CLOUDFRONT_DOMAIN) ? AWS_CLOUDFRONT_DOMAIN : null
+            if (cfValid && host === cfValid) return true
+            const s3Host = (AWS_S3_BUCKET && AWS_S3_REGION) ? `${AWS_S3_BUCKET}.s3.${AWS_S3_REGION}.amazonaws.com` : null
+            return !!s3Host && host === s3Host
+          } catch {
+            return false
+          }
+        })()
+        const forceSign = !!force
+        if (!isS3Like || !s3) return { in: url, out: url, signed: false }
+        if (AWS_S3_PUBLIC_READ && !forceSign) return { in: url, out: url, signed: false }
+        const u = new URL(url)
+        const key = u.pathname.startsWith('/') ? u.pathname.slice(1) : u.pathname
+        const cmd = new GetObjectCommand({ Bucket: AWS_S3_BUCKET, Key: key })
+        const expiresIn = 60 * 5
+        const signed = await getSignedUrl(s3, cmd, { expiresIn })
+        return { in: url, out: signed, signed: true, ttlSeconds: expiresIn }
+      } catch (e) {
+        return { in: url, out: url, signed: false, error: e?.message || 'resolve failed' }
+      }
+    }))
+
+    // Preserve order and return simple array of resolved URLs
+    const resolved = results.map(r => r.out)
+    return res.json({ items: resolved })
+  } catch (e) {
+    console.error('batch resolve error:', e)
+    return res.status(500).json({ error: 'Failed to resolve urls' })
+  }
+})
+
 function presignFactory(kind) {
   return async (req,res) => {
     try {

@@ -10,6 +10,7 @@ import {
   decimal,
   jsonb,
 } from "drizzle-orm/pg-core";
+import { index } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 // =======================
@@ -65,7 +66,12 @@ export const productsTable = pgTable("products", {
   status: varchar("status", { length: 20 }).default("active"), // active, sold, expired, inactive
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (t) => ({
+  idxProductsCreated: index("idx_products_created").on(t.createdAt),
+  idxProductsStatusCreated: index("idx_products_status_created").on(t.status, t.createdAt),
+  idxProductsFarmer: index("idx_products_farmer").on(t.farmerId),
+  idxProductsCategory: index("idx_products_category").on(t.category),
+}))
 
 // =======================
 // ORDERS
@@ -83,7 +89,12 @@ export const ordersTable = pgTable("orders", {
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (t) => ({
+  idxOrdersBuyer: index("idx_orders_buyer").on(t.buyerId),
+  idxOrdersFarmer: index("idx_orders_farmer").on(t.farmerId),
+  idxOrdersProduct: index("idx_orders_product").on(t.productId),
+  idxOrdersCreated: index("idx_orders_created").on(t.createdAt),
+}))
 
 // =======================
 // ORDER STATUS HISTORY
@@ -105,7 +116,10 @@ export const favoritesTable = pgTable("favorites", {
   buyerId: integer("buyer_id").references(() => usersTable.id).notNull(),
   productId: integer("product_id").references(() => productsTable.id).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (t) => ({
+  idxFavoritesBuyer: index("idx_favorites_buyer").on(t.buyerId),
+  idxFavoritesProduct: index("idx_favorites_product").on(t.productId),
+}))
 
 // =======================
 // REVIEWS
@@ -119,7 +133,11 @@ export const reviewsTable = pgTable("reviews", {
   rating: integer("rating"), // 1 to 5
   comment: text("comment"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (t) => ({
+  idxReviewsReviewed: index("idx_reviews_reviewed").on(t.reviewedId, t.createdAt),
+  idxReviewsProduct: index("idx_reviews_product").on(t.productId, t.createdAt),
+  idxReviewsCreated: index("idx_reviews_created").on(t.createdAt),
+}))
 
 // =======================
 // CLERK SYNC RUNS (Operational Observability)

@@ -1,4 +1,5 @@
 import express from "express"
+import compression from "compression"
 import cors from "cors"
 import "dotenv/config"
 import { db } from "./config/db.js"
@@ -37,6 +38,9 @@ try {
 const app = express()
 const PORT = ENV.PORT
 
+// Response compression to reduce payload size and improve perceived latency over mobile networks
+app.use(compression())
+
 app.use(
   cors({
     origin: ENV.ALLOWED_ORIGINS,
@@ -74,6 +78,11 @@ app.use('/api', reportRoutes)
 app.use('/api', miscRoutes)
 app.use('/api', webhookRoutes)
 //    Location router not namespaced (legacy path design) — can be migrated later if desired.
+
+// Lightweight health endpoint for uptime checks and keep-alive pings
+app.get('/health', (req, res) => {
+  res.status(200).json({ ok: true, uptime: process.uptime(), env: ENV.NODE_ENV })
+})
 
 // 5) Background jobs (production only) + optional Clerk automation (any env)
 if (ENV.NODE_ENV === "production") {

@@ -128,8 +128,15 @@ router.post('/webhooks/clerk', express.raw({ type: 'application/json' }), verify
       case 'user.deleted':
         await handleUserDeleted(data)
         break
+      // Common noisy events we intentionally ignore
+      case 'session.created':
+      case 'session.ended':
+      case 'session.removed':
+      case 'session.revoked':
+        if (DEBUG) console.log(`[clerk:webhook] Ignored ${type}`)
+        break
       default:
-        console.log(`Unhandled webhook type: ${type}`)
+        if (DEBUG) console.log(`Unhandled webhook type: ${type}`)
     }
     res.status(200).json({ received: true })
   } catch (error) {

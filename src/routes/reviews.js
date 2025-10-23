@@ -78,7 +78,8 @@ router.get('/users/:id/reviews', async (req, res) => {
   try {
     const userId = Number(req.params.id)
     if (!Number.isFinite(userId)) return res.status(400).json({ error: 'Invalid user id' })
-    const { include } = req.query || {}
+    const { include, limit, cursor } = req.query || {}
+    const pageSize = Math.min(Number(limit) || 24, 100)
     const includeComments = typeof include === 'string' && include.split(',').includes('comments')
     // Join with reviewer for display name
     const rows = await db.select({
@@ -95,8 +96,8 @@ router.get('/users/:id/reviews', async (req, res) => {
     })
     .from(reviewsTable)
     .leftJoin(usersTable, eq(reviewsTable.reviewerId, usersTable.id))
-    .where(eq(reviewsTable.reviewedId, userId))
-    .orderBy(desc(reviewsTable.createdAt))
+  .where(eq(reviewsTable.reviewedId, userId))
+  .orderBy(desc(reviewsTable.createdAt))
 
     // Attach comments or count
     const reviewIds = rows.map(r => r.id)
@@ -122,11 +123,19 @@ router.get('/users/:id/reviews', async (req, res) => {
         for (const c of allComments) commentsByReview[c.reviewId] = (commentsByReview[c.reviewId] || 0) + 1
       }
     }
-    const items = rows.map(r => includeComments
+    let items = rows.map(r => includeComments
       ? ({ ...r, comments: commentsByReview[r.id] || [], commentsCount: (commentsByReview[r.id] || []).length })
       : ({ ...r, commentsCount: commentsByReview[r.id] || 0 })
     )
-    return res.json({ items, total: items.length })
+    // Cursor-based pagination by createdAt
+    let filtered = items
+    if (cursor) {
+      const d = new Date(cursor)
+      if (!isNaN(d.getTime())) filtered = items.filter(it => new Date(it.createdAt) < d)
+    }
+    const sliced = filtered.slice(0, pageSize)
+    const nextCursor = filtered.length > pageSize ? sliced[sliced.length - 1].createdAt : null
+    return res.json({ items: sliced, total: items.length, nextCursor })
   } catch (e) {
     console.error('list user reviews failed', e)
     return res.status(500).json({ error: 'Failed to fetch reviews' })
@@ -272,7 +281,8 @@ router.get('/products/:id/reviews', async (req, res) => {
   try {
     const productId = Number(req.params.id)
     if (!Number.isFinite(productId)) return res.status(400).json({ error: 'Invalid product id' })
-    const { include } = req.query || {}
+    const { include, limit, cursor } = req.query || {}
+    const pageSize = Math.min(Number(limit) || 24, 100)
     const includeComments = typeof include === 'string' && include.split(',').includes('comments')
     const rows = await db.select({
       id: reviewsTable.id,
@@ -288,8 +298,8 @@ router.get('/products/:id/reviews', async (req, res) => {
     })
     .from(reviewsTable)
     .leftJoin(usersTable, eq(reviewsTable.reviewerId, usersTable.id))
-    .where(eq(reviewsTable.productId, productId))
-    .orderBy(desc(reviewsTable.createdAt))
+  .where(eq(reviewsTable.productId, productId))
+  .orderBy(desc(reviewsTable.createdAt))
 
     // Attach comments or count
     const reviewIds = rows.map(r => r.id)
@@ -314,11 +324,19 @@ router.get('/products/:id/reviews', async (req, res) => {
         for (const c of allComments) commentsByReview[c.reviewId] = (commentsByReview[c.reviewId] || 0) + 1
       }
     }
-    const items = rows.map(r => includeComments
+    let items = rows.map(r => includeComments
       ? ({ ...r, comments: commentsByReview[r.id] || [], commentsCount: (commentsByReview[r.id] || []).length })
       : ({ ...r, commentsCount: commentsByReview[r.id] || 0 })
     )
-    return res.json({ items, total: items.length })
+    // Cursor-based pagination by createdAt
+    let filtered = items
+    if (cursor) {
+      const d = new Date(cursor)
+      if (!isNaN(d.getTime())) filtered = items.filter(it => new Date(it.createdAt) < d)
+    }
+    const sliced = filtered.slice(0, pageSize)
+    const nextCursor = filtered.length > pageSize ? sliced[sliced.length - 1].createdAt : null
+    return res.json({ items: sliced, total: items.length, nextCursor })
   } catch (e) {
     console.error('list product reviews failed', e)
     return res.status(500).json({ error: 'Failed to fetch product reviews' })
